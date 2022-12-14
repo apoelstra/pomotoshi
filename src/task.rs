@@ -51,7 +51,7 @@ impl Task {
         if let Some(child) = path.pop() {
             self.children
                 .entry(child)
-                .or_insert(Task::new_root())
+                .or_insert_with(Task::new_root)
                 .add_time_path(path, time);
         }
     }
@@ -77,9 +77,11 @@ impl Task {
         }
         ret
     }
+}
 
+impl ToString for Task {
     /// Stringify (as a multi-line string) the task and all its children
-    pub fn to_string(&self) -> String {
+    fn to_string(&self) -> String {
         let focus_s = self.focus_time.as_millis() as f64 / 1000.0;
         self.to_string_internal("", 0, focus_s)
     }

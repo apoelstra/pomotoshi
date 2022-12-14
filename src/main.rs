@@ -48,7 +48,7 @@ const DBUS_PATH: &str = "/org/pomotoshi";
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config_file = env::args().nth(1);
-    let server = if let Some(Ok(fh)) = config_file.as_ref().map(|f| fs::File::open(f)) {
+    let server = if let Some(Ok(fh)) = config_file.as_ref().map(fs::File::open) {
         let buf_reader = io::BufReader::new(fh);
         Arc::new(Mutex::new(serde_json::from_reader(buf_reader)?))
     } else {
@@ -177,7 +177,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         counter = (counter + 1) % SAVEOUT_FREQ;
         if counter == 0 {
-            if let Some(fh) = config_file.as_ref().map(|f| fs::File::create(f)) {
+            if let Some(fh) = config_file.as_ref().map(fs::File::create) {
                 if let Ok(fh) = fh {
                     if serde_json::to_writer(fh, &*lock).is_err() {
                         lock.signal_error();
