@@ -19,7 +19,7 @@
 //!
 
 use regex::Regex;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::iter;
 use std::time::Duration;
@@ -49,7 +49,8 @@ impl Task {
     pub fn add_time_path(&mut self, mut path: Vec<String>, time: Duration) {
         self.focus_time += time;
         if let Some(child) = path.pop() {
-            self.children.entry(child)
+            self.children
+                .entry(child)
                 .or_insert(Task::new_root())
                 .add_time_path(path, time);
         }
@@ -100,11 +101,19 @@ fn title_to_path(title: &str) -> Vec<String> {
 
     // Github-specific qutebrowser
     if title.contains("Notifications - qutebrowser") {
-            return vec!["Notifications".into(), "Github".into()];
+        return vec!["Notifications".into(), "Github".into()];
     }
-    let github_regex = Regex::new(r"(?:\[\d{1,2}%\] )?(.*) · (Pull Request|Issue|Discussion) (#\d*) · (.*) - qutebrowser").unwrap();
+    let github_regex = Regex::new(
+        r"(?:\[\d{1,2}%\] )?(.*) · (Pull Request|Issue|Discussion) (#\d*) · (.*) - qutebrowser",
+    )
+    .unwrap();
     if let Some(github) = github_regex.captures(title) {
-        return vec![format!("{} {}", &github[3], &github[1]), github[2].into(), github[4].into(), "Github".into()];
+        return vec![
+            format!("{} {}", &github[3], &github[1]),
+            github[2].into(),
+            github[4].into(),
+            "Github".into(),
+        ];
     }
 
     // General qutebrowser
@@ -116,7 +125,12 @@ fn title_to_path(title: &str) -> Vec<String> {
     // TMux
     let tmux_regex = Regex::new(r"(.*) \(tmux:(.*)/(.*)\)").unwrap();
     if let Some(tmux) = tmux_regex.captures(title) {
-        return vec![tmux[1].into(), tmux[3].into(), tmux[2].into(), "tmux".into()];
+        return vec![
+            tmux[1].into(),
+            tmux[3].into(),
+            tmux[2].into(),
+            "tmux".into(),
+        ];
     }
 
     vec![title.into()]
@@ -130,15 +144,24 @@ mod tests {
     fn test_title_to_path() {
         assert_eq!(
             title_to_path("Where in the World: Tenaya and Climate Change - qutebrowser"),
-            vec!["Where in the World: Tenaya and Climate Change".to_string(), "qutebrowser".to_string()],
+            vec![
+                "Where in the World: Tenaya and Climate Change".to_string(),
+                "qutebrowser".to_string()
+            ],
         );
         assert_eq!(
             title_to_path("[23%] Where in the World: Tenaya and Climate Change - qutebrowser"),
-            vec!["Where in the World: Tenaya and Climate Change".to_string(), "qutebrowser".to_string()],
+            vec![
+                "Where in the World: Tenaya and Climate Change".to_string(),
+                "qutebrowser".to_string()
+            ],
         );
         assert_eq!(
             title_to_path("[0%] Where in the World: Tenaya and Climate Change - qutebrowser"),
-            vec!["Where in the World: Tenaya and Climate Change".to_string(), "qutebrowser".to_string()],
+            vec![
+                "Where in the World: Tenaya and Climate Change".to_string(),
+                "qutebrowser".to_string()
+            ],
         );
         assert_eq!(
             title_to_path("(•) Rocket.Chat - qutebrowser"),
@@ -153,11 +176,15 @@ mod tests {
             vec!["Gmail".to_string(), "Blockstream".to_string()],
         );
         assert_eq!(
-            title_to_path("Inbox (10) - apoelstra@blockstream.com - Blockstream Mail - qutebrowser"),
+            title_to_path(
+                "Inbox (10) - apoelstra@blockstream.com - Blockstream Mail - qutebrowser"
+            ),
             vec!["Gmail".to_string(), "Blockstream".to_string()],
         );
         assert_eq!(
-            title_to_path("Blockstream - Calendar - Tuesday, December 13, 2022, today - qutebrowser"),
+            title_to_path(
+                "Blockstream - Calendar - Tuesday, December 13, 2022, today - qutebrowser"
+            ),
             vec!["Calendar".to_string(), "Blockstream".to_string()],
         );
         assert_eq!(
@@ -211,5 +238,3 @@ mod tests {
         );
     }
 }
-
-

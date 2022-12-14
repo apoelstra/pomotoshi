@@ -18,7 +18,7 @@
 //!
 
 use crate::task::Task;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Main server structure
@@ -81,7 +81,7 @@ impl Server {
             let duration = now - self.last_task_report;
             self.last_task_report = now;
             for log in self.task_logs.values_mut() {
-               log.add_time(win, duration);
+                log.add_time(win, duration);
             }
         }
     }
@@ -113,7 +113,7 @@ impl Server {
         }
     }
 
-    /// (Attempt to) start a new block 
+    /// (Attempt to) start a new block
     pub fn start_block(&mut self, duration_s: u64) {
         self.block_log = String::new();
         self.log("started block");
@@ -124,15 +124,15 @@ impl Server {
                     duration,
                     end_time: std::time::Instant::now() + duration,
                 };
-            },
+            }
             State::Paused { .. } | State::InBlock { .. } => {
                 // refuse te start a block when one is running; first cancel the running one
                 self.flash_warn = 5;
-            },
+            }
             State::InCooldown { .. } => {
                 // refuse te start a block during cooldown; cooldown cannot be cancelled.
                 self.flash_error = 7;
-            },
+            }
         }
     }
 
@@ -155,14 +155,17 @@ impl Server {
                     total_duration: duration,
                     remaining_duration: end_time - std::time::Instant::now(),
                 };
-            },
-            State::Paused { total_duration, remaining_duration } => {
+            }
+            State::Paused {
+                total_duration,
+                remaining_duration,
+            } => {
                 self.log("unpaused block");
                 self.state = State::InBlock {
                     duration: total_duration,
                     end_time: std::time::Instant::now() + remaining_duration,
                 };
-            },
+            }
             _ => self.flash_warn = 5,
         }
     }
@@ -188,14 +191,18 @@ impl Server {
         // Actually display status
         match self.state {
             State::Idle => format!("<fc=#AAA{}>--</fc>", bg_col),
-            State::Paused { remaining_duration, .. } => {
+            State::Paused {
+                remaining_duration, ..
+            } => {
                 let rem = remaining_duration.as_secs();
                 format!("<fc=#AAA{}>{:02}:{:02}</fc>", bg_col, rem / 60, rem % 60)
             }
             State::InBlock { end_time, duration } => {
                 if now > end_time {
                     self.log("end block; start cooldown");
-                    self.state = State::InCooldown { end_time: now + crate::COOLDOWN_DURATION };
+                    self.state = State::InCooldown {
+                        end_time: now + crate::COOLDOWN_DURATION,
+                    };
                 };
                 let rem_duration = end_time - now;
                 let rem_s = rem_duration.as_secs();
@@ -209,7 +216,7 @@ impl Server {
                     rem_s / 60,
                     rem_s % 60,
                 )
-            },
+            }
             State::InCooldown { end_time } => {
                 if now > end_time {
                     self.log("end cooldown");
@@ -229,12 +236,17 @@ impl Server {
                 }
                 format!(
                     "<fc={}{}>{:02}:{:02}</fc>",
-                    crate::color::fade_between((192, 44, 44), (255, 0, 0), rem_duration, crate::COOLDOWN_DURATION),
+                    crate::color::fade_between(
+                        (192, 44, 44),
+                        (255, 0, 0),
+                        rem_duration,
+                        crate::COOLDOWN_DURATION
+                    ),
                     bg_col,
                     rem_s / 60,
                     rem_s % 60,
                 )
-            },
+            }
         }
     }
 }
@@ -255,13 +267,12 @@ enum State {
         remaining_duration: std::time::Duration,
     },
     /// The server is counting down the post-block cooldown
-    InCooldown {
-        end_time: std::time::Instant,
-    },
+    InCooldown { end_time: std::time::Instant },
 }
 
 impl State {
     /// Helper function needed by serde to "deserialize" the field as Idle
-    fn idle() -> State { State::Idle }
+    fn idle() -> State {
+        State::Idle
+    }
 }
-

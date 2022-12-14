@@ -25,10 +25,10 @@ mod task;
 
 use dbus::blocking::LocalConnection;
 use dbus::channel::MatchingReceiver;
-use dbus_crossroads::{Crossroads, Context};
-use std::{env, fs, io};
+use dbus_crossroads::{Context, Crossroads};
 use std::process::Command;
 use std::sync::{Arc, Mutex};
+use std::{env, fs, io};
 
 /// How long cooldown (period after a block when no new blocks are allowed) should last
 const COOLDOWN_DURATION: std::time::Duration = std::time::Duration::from_secs(300);
@@ -65,8 +65,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // DBUS_NAME_FLAG_ALLOW_REPLACEMENT -- don't allow other instances to replace us
         false,
         // DBUS_NAME_FLAG_REPLACE_EXISTING -- don't try to replace other instances
-        false,
-        // DBUS_NAME_FLAG_DO_NOT_QUEUE -- if another instance exists, just fail
+        false, // DBUS_NAME_FLAG_DO_NOT_QUEUE -- if another instance exists, just fail
         true,
     )?;
 
@@ -77,76 +76,69 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // startBlock method: takes an integer number of time, in seconds
         b.method(
             "startBlock", // name
-            ("time_s",), // input args
-            (), // output args
+            ("time_s",),  // input args
+            (),           // output args
             move |_: &mut Context, server: &mut Arc<Mutex<server::Server>>, (time_s,): (u64,)| {
-                let mut lock = server.lock()
-                    .expect("server did not witness a panic");
+                let mut lock = server.lock().expect("server did not witness a panic");
                 lock.start_block(time_s);
                 Ok(())
             },
         );
         b.method(
             "cancelBlock", // name
-            (), // input args
-            (), // output args
+            (),            // input args
+            (),            // output args
             move |_: &mut Context, server: &mut Arc<Mutex<server::Server>>, _: ()| {
-                let mut lock = server.lock()
-                    .expect("server did not witness a panic");
+                let mut lock = server.lock().expect("server did not witness a panic");
                 lock.cancel_block();
                 Ok(())
             },
         );
         b.method(
             "pauseBlock", // name
-            (), // input args
-            (), // output args
+            (),           // input args
+            (),           // output args
             move |_: &mut Context, server: &mut Arc<Mutex<server::Server>>, _: ()| {
-                let mut lock = server.lock()
-                    .expect("server did not witness a panic");
+                let mut lock = server.lock().expect("server did not witness a panic");
                 lock.pause_block();
                 Ok(())
             },
         );
         b.method(
             "blockLog", // name
-            (), // input args
-            ("log",), // output args
+            (),         // input args
+            ("log",),   // output args
             move |_: &mut Context, server: &mut Arc<Mutex<server::Server>>, _: ()| {
-                let mut lock = server.lock()
-                    .expect("server did not witness a panic");
+                let mut lock = server.lock().expect("server did not witness a panic");
                 Ok((lock.block_log(),))
             },
         );
         b.method(
             "taskLogAdd", // name
-            ("name",), // input args
-            (), // output args
+            ("name",),    // input args
+            (),           // output args
             move |_: &mut Context, server: &mut Arc<Mutex<server::Server>>, (name,): (String,)| {
-                let mut lock = server.lock()
-                    .expect("server did not witness a panic");
+                let mut lock = server.lock().expect("server did not witness a panic");
                 lock.task_log_add(name);
                 Ok(())
             },
         );
         b.method(
             "taskLogRemove", // name
-            ("name",), // input args
-            (), // output args
+            ("name",),       // input args
+            (),              // output args
             move |_: &mut Context, server: &mut Arc<Mutex<server::Server>>, (name,): (String,)| {
-                let mut lock = server.lock()
-                    .expect("server did not witness a panic");
+                let mut lock = server.lock().expect("server did not witness a panic");
                 lock.task_log_remove(&name);
                 Ok(())
             },
         );
         b.method(
             "taskLogOutput", // name
-            ("name",), // input args
-            ("log",), // output args
+            ("name",),       // input args
+            ("log",),        // output args
             move |_: &mut Context, server: &mut Arc<Mutex<server::Server>>, (name,): (String,)| {
-                let mut lock = server.lock()
-                    .expect("server did not witness a panic");
+                let mut lock = server.lock().expect("server did not witness a panic");
                 Ok((lock.task_log_dump(&name),))
             },
         );
@@ -155,10 +147,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Serve clients forever.
     // We add the Crossroads instance to the connection so that incoming method calls will be handled.
-    c.start_receive(dbus::message::MatchRule::new_method_call(), Box::new(move |msg, conn| {
-        cr.handle_message(msg, conn).unwrap();
-        true
-    }));
+    c.start_receive(
+        dbus::message::MatchRule::new_method_call(),
+        Box::new(move |msg, conn| {
+            cr.handle_message(msg, conn).unwrap();
+            true
+        }),
+    );
 
     // Serve clients forever.
     let mut counter = 0;
@@ -166,8 +161,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         // D-Bus updates
         c.process(UPDATE_FREQ)?;
 
-        let mut lock = server.lock()
-            .expect("server did not witness a panic");
+        let mut lock = server.lock().expect("server did not witness a panic");
 
         // Record currently-active window
         let curr_win = Command::new("xdotool")
@@ -195,4 +189,3 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 }
-
