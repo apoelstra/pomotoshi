@@ -179,8 +179,8 @@ impl Server {
                 };
                 let rem_duration = end_time - now;
                 let rem_s = rem_duration.as_secs();
-                if rem_s < 10 && rem_s % 2 == 1 {
-                    bg_col = ",#FF0";
+                if rem_s < 10 && rem_duration.as_millis() % 2000 > 1750 {
+                    self.flash_warn = 3;
                 }
                 format!(
                     "<fc={}{}>{:02}:{:02}</fc>",
@@ -196,7 +196,7 @@ impl Server {
                     // FIXME we probably shouldn't hardcode this
                     std::process::Command::new("bash")
                         .arg("-c")
-                        .arg("source ~/.bashrc && keyboard.sh")
+                        .arg("source ~/.bashrc && ~/bin/keyboard.sh")
                         .output()
                         .expect("executing bash");
                     self.state = State::Idle;
@@ -204,8 +204,8 @@ impl Server {
 
                 let rem_duration = end_time - now;
                 let rem_s = rem_duration.as_secs();
-                if rem_s < 10 && rem_s % 2 == 1 {
-                    bg_col = ",#FF0";
+                if rem_s < 10 && rem_duration.as_millis() % 2000 > 1750 {
+                    self.flash_warn = 3;
                 }
                 format!(
                     "<fc={}{}>{:02}:{:02}</fc>",
