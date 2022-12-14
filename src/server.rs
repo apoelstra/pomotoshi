@@ -57,7 +57,7 @@ impl Server {
             .expect("executing bash")
             .stdout;
         let date = String::from_utf8_lossy(&date);
-        self.block_log += &format!("{}: {}\n", date, log_str);
+        self.block_log += &format!("{}: {}\n", date.trim(), log_str);
     }
 
     /// Record the current active window, for task-tracking purposes
