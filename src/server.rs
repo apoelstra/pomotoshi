@@ -204,7 +204,7 @@ impl Server {
                 }
                 format!(
                     "<fc={}{}>{:02}:{:02}</fc>",
-                    crate::color::fade_between((255, 255, 0), (0, 255, 0), rem_duration, duration),
+                    crate::color::fade_between((255, 192, 0), (0, 255, 0), rem_duration, duration),
                     bg_col,
                     rem_s / 60,
                     rem_s % 60,
@@ -229,7 +229,7 @@ impl Server {
                 }
                 format!(
                     "<fc={}{}>{:02}:{:02}</fc>",
-                    crate::color::fade_between((0, 255, 255), (255, 0, 0), rem_duration, crate::COOLDOWN_DURATION),
+                    crate::color::fade_between((192, 44, 44), (255, 0, 0), rem_duration, crate::COOLDOWN_DURATION),
                     bg_col,
                     rem_s / 60,
                     rem_s % 60,
