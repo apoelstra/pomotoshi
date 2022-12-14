@@ -1,0 +1,10 @@
+[package]
+name = "pomotoshi"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+dbus = "0.9"
+dbus-crossroads = "0.5"
+regex = "1.0"
+time = { version = "0.3", features = [ "std", "formatting" ] }
