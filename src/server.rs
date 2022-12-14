@@ -29,6 +29,8 @@ pub struct Server {
     last_task_report: std::time::Instant,
     /// Log of active windows
     task_log: crate::task::Task,
+    /// Log of block start/stop/etc
+    block_log: String,
 }
 
 impl Server {
@@ -40,7 +42,19 @@ impl Server {
             flash_warn: 0,
             last_task_report: std::time::Instant::now(),
             task_log: crate::task::Task::new_root(),
+            block_log: String::new(),
         }
+    }
+
+    /// Internal logging method
+    fn log(&mut self, log_str: &str) {
+        let date = std::process::Command::new("date")
+            .arg("+%F %T%z")
+            .output()
+            .expect("executing bash")
+            .stdout;
+        let date = String::from_utf8_lossy(&date);
+        self.block_log += &format!("{}: {}\n", date, log_str);
     }
 
     /// Record the current active window, for task-tracking purposes
@@ -57,16 +71,20 @@ impl Server {
         if reset {
             self.task_log = crate::task::Task::new_root();
         }
-        self.task_log.to_string()
+        format!("{}{}", self.block_log, self.task_log.to_string())
     }
 
     /// (Attempt to) start a new block 
     pub fn start_block(&mut self, duration_s: u64) {
+        self.block_log = String::new();
+        self.log("started block");
         match self.state {
             State::Idle => {
+                let duration = std::time::Duration::from_secs(duration_s);
                 self.task_log = crate::task::Task::new_root();
                 self.state = State::InBlock {
-                    end_time: std::time::Instant::now() + std::time::Duration::from_secs(duration_s),
+                    duration,
+                    end_time: std::time::Instant::now() + duration,
                 };
             },
             State::Paused { .. } | State::InBlock { .. } => {
@@ -82,8 +100,10 @@ impl Server {
 
     /// Attempt to cancel a currently-running block
     pub fn cancel_block(&mut self) {
+        self.log("canceled block");
         match self.state {
             State::InBlock { .. } => self.state = State::Idle,
+            State::InCooldown { .. } => self.flash_error = 7,
             _ => self.flash_warn = 5,
         }
     }
@@ -91,9 +111,18 @@ impl Server {
     /// Attempt to pause a currently-running block
     pub fn pause_block(&mut self) {
         match self.state {
-            State::InBlock { end_time } => {
+            State::InBlock { duration, end_time } => {
+                self.log("paused block");
                 self.state = State::Paused {
-                    duration: end_time - std::time::Instant::now(),
+                    total_duration: duration,
+                    remaining_duration: end_time - std::time::Instant::now(),
+                };
+            },
+            State::Paused { total_duration, remaining_duration } => {
+                self.log("unpaused block");
+                self.state = State::InBlock {
+                    duration: total_duration,
+                    end_time: std::time::Instant::now() + remaining_duration,
                 };
             },
             _ => self.flash_warn = 5,
@@ -120,31 +149,53 @@ impl Server {
         }
         // Actually display status
         match self.state {
-            State::Idle => format!("<fc=#888{}>--</fc>", bg_col),
-            State::Paused { duration } => {
-                let rem = duration.as_secs();
-                format!("<fc=#0F0{}>{:02}:{:02}</fc>", bg_col, rem / 60, rem % 60)
+            State::Idle => format!("<fc=#AAA{}>--</fc>", bg_col),
+            State::Paused { remaining_duration, .. } => {
+                let rem = remaining_duration.as_secs();
+                format!("<fc=#AAA{}>{:02}:{:02}</fc>", bg_col, rem / 60, rem % 60)
             }
-            State::InBlock { end_time } => {
+            State::InBlock { end_time, duration } => {
                 if now > end_time {
+                    self.log("end block; start cooldown");
                     self.state = State::InCooldown { end_time: now + crate::COOLDOWN_DURATION };
                 };
-                let rem = (end_time - now).as_secs();
-                if rem < 10 && rem % 2 == 1 {
+                let rem_duration = end_time - now;
+                let rem_s = rem_duration.as_secs();
+                if rem_s < 10 && rem_s % 2 == 1 {
                     bg_col = ",#FF0";
                 }
-                format!("<fc=#0F0{}>{:02}:{:02}</fc>", bg_col, rem / 60, rem % 60)
+                format!(
+                    "<fc={}{}>{:02}:{:02}</fc>",
+                    crate::color::fade_between((255, 255, 0), (0, 255, 0), rem_duration, duration),
+                    bg_col,
+                    rem_s / 60,
+                    rem_s % 60,
+                )
             },
             State::InCooldown { end_time } => {
                 if now > end_time {
+                    self.log("end cooldown");
+                    // FIXME we probably shouldn't hardcode this
+                    std::process::Command::new("bash")
+                        .arg("-c")
+                        .arg("source ~/.bashrc && keyboard.sh")
+                        .output()
+                        .expect("executing bash");
                     self.state = State::Idle;
                 };
 
-                let rem = (end_time - now).as_secs();
-                if rem < 10 && rem % 2 == 1 {
+                let rem_duration = end_time - now;
+                let rem_s = rem_duration.as_secs();
+                if rem_s < 10 && rem_s % 2 == 1 {
                     bg_col = ",#FF0";
                 }
-                format!("<fc=#FF0{}>{:02}:{:02}</fc>", bg_col, rem / 60, rem % 60)
+                format!(
+                    "<fc={}{}>{:02}:{:02}</fc>",
+                    crate::color::fade_between((0, 255, 255), (255, 0, 0), rem_duration, crate::COOLDOWN_DURATION),
+                    bg_col,
+                    rem_s / 60,
+                    rem_s % 60,
+                )
             },
         }
     }
@@ -157,11 +208,13 @@ enum State {
     Idle,
     /// The server is counting down a given block
     InBlock {
+        duration: std::time::Duration,
         end_time: std::time::Instant,
     },
     /// Timer is paused
     Paused {
-        duration: std::time::Duration,
+        total_duration: std::time::Duration,
+        remaining_duration: std::time::Duration,
     },
     /// The server is counting down the post-block cooldown
     InCooldown {

@@ -19,6 +19,7 @@
 //! provide output via xmobar.
 //!
 
+mod color;
 mod server;
 mod task;
 
