@@ -11,13 +11,14 @@ commands to talk to it) but has a slightly different feature set:
 * After every block there is a 5 minute (hardcoded, TODO make it configurable) "cooldown"
   period during which time you cannot start a new block.
 * Using `xdotool getwindowfocus getwindowname`, the tool records statistics on what you
-  are focused on, during blocks. To get statistics you can call dbus-send with the
-  `dumpStats` or `dumpLongStats` commands. These take a boolean argument saying whether
-  or not to reset the counters. FIXME you should be able to disable this. It also uses
-  a bunch of heuristics to organize activities, which I don't have any real intention
-  of making more general.
+  are focused on, during blocks. To use this feature, call dbus-send with the `taskLogAdd`
+  command and a string-typed name. To reset the log, repeat `taskLogAdd`, or to stop
+  logging entirely, use `taskLogRemove`. To see the current state of the logs, use
+  `taskLogOutput`. Windows are only logged during active unpaused blocks.
+* The active-window logging uses a bunch of heuristics to organize activities, which
+  I don't have any real intention of making more general.
 * Right now we hardcode "keyboard.sh" rather than having a `--terminatedShellCmd` option.
-  This makes the tool basically unusable except for me, it's a TODO to fix this.
+  This makes the tool basically unusable except for me, it's a FIXME to fix this.
 * The colors fade (also hardcoded, FIXME should be configurable)
 
 # Setting up
