@@ -28,8 +28,10 @@ pub struct Server {
     #[serde(skip, default = "State::idle")]
     state: State,
     /// Error flash countdown
+    #[serde(skip, default)]
     flash_error: usize,
     /// Warning flash countdown
+    #[serde(skip, default)]
     flash_warn: usize,
     /// Last active-window-log update
     #[serde(skip, default = "std::time::Instant::now")]
@@ -51,6 +53,11 @@ impl Server {
             task_logs: HashMap::new(),
             block_log: String::new(),
         }
+    }
+
+    /// We can't really signal fs/IO errors in any way so just use this
+    pub fn signal_error(&mut self) {
+        self.flash_error = 15;
     }
 
     /// Internal logging method

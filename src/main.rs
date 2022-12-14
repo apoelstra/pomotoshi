@@ -26,6 +26,7 @@ mod task;
 use dbus::blocking::LocalConnection;
 use dbus::channel::MatchingReceiver;
 use dbus_crossroads::{Crossroads, Context};
+use std::{env, fs, io};
 use std::process::Command;
 use std::sync::{Arc, Mutex};
 
@@ -38,13 +39,21 @@ const COOLDOWN_DURATION: std::time::Duration = std::time::Duration::from_secs(30
 /// every second, but is otherwise more-or-less arbitrary. It does define the
 /// flashing speed so it probably should not be super low.
 const UPDATE_FREQ: std::time::Duration = std::time::Duration::from_millis(100);
+/// How many `UPDATE_FREO` iterations go by between saving the state of the timer out to disk
+const SAVEOUT_FREQ: usize = 10;
 /// Name of the D-Bus org
 const DBUS_ORG: &str = "org.Pomotoshi";
 /// Name of the D-Bus path
 const DBUS_PATH: &str = "/org/pomotoshi";
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let server = Arc::new(Mutex::new(server::Server::new()));
+    let config_file = env::args().nth(1);
+    let server = if let Some(Ok(fh)) = config_file.as_ref().map(|f| fs::File::open(f)) {
+        let buf_reader = io::BufReader::new(fh);
+        Arc::new(Mutex::new(serde_json::from_reader(buf_reader)?))
+    } else {
+        Arc::new(Mutex::new(server::Server::new()))
+    };
 
     // Start D-Bus connection
     let c = LocalConnection::new_session()?;
@@ -152,6 +161,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }));
 
     // Serve clients forever.
+    let mut counter = 0;
     loop {
         // D-Bus updates
         c.process(UPDATE_FREQ)?;
@@ -170,6 +180,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Output state to xmobar
         println!("{}", lock.xmobar_update());
+
+        counter = (counter + 1) % SAVEOUT_FREQ;
+        if counter == 0 {
+            if let Some(fh) = config_file.as_ref().map(|f| fs::File::create(f)) {
+                if let Ok(fh) = fh {
+                    if serde_json::to_writer(fh, &*lock).is_err() {
+                        lock.signal_error();
+                    }
+                } else {
+                    lock.signal_error();
+                }
+            }
+        }
     }
 }
 
