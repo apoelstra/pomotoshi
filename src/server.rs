@@ -31,6 +31,8 @@ pub struct Server {
     task_log: crate::task::Task,
     /// Log of block start/stop/etc
     block_log: String,
+    /// Log of active windows (which must be manually reset)
+    long_task_log: crate::task::Task,
 }
 
 impl Server {
@@ -42,6 +44,7 @@ impl Server {
             flash_warn: 0,
             last_task_report: std::time::Instant::now(),
             task_log: crate::task::Task::new_root(),
+            long_task_log: crate::task::Task::new_root(),
             block_log: String::new(),
         }
     }
@@ -63,13 +66,28 @@ impl Server {
             let duration = std::time::Instant::now() - self.last_task_report;
             self.last_task_report = std::time::Instant::now();
             self.task_log.add_time(win, duration);
+            self.long_task_log.add_time(win, duration);
         }
     }
 
-    /// Record the current active window, for task-tracking purposes
+    /// Output statistics from "short" log
     pub fn dump_stats(&mut self, reset: bool) -> String {
         if reset {
+            self.log("reset statistics");
             self.task_log = crate::task::Task::new_root();
+        } else {
+            self.log("output statistics (did not reset)");
+        }
+        format!("{}{}", self.block_log, self.task_log.to_string())
+    }
+
+    /// Output statistics from "long" log
+    pub fn dump_long_stats(&mut self, reset: bool) -> String {
+        if reset {
+            self.log("reset long statistics");
+            self.task_log = crate::task::Task::new_root();
+        } else {
+            self.log("output long statistics (did not reset)");
         }
         format!("{}{}", self.block_log, self.task_log.to_string())
     }

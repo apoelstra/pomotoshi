@@ -109,6 +109,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Ok((lock.dump_stats(reset),))
             },
         );
+        b.method(
+            "dumpLongStats", // name
+            ("reset",), // input args
+            ("log",), // output args
+            move |_: &mut Context, server: &mut Arc<Mutex<server::Server>>, (reset,): (bool,)| {
+                let mut lock = server.lock()
+                    .expect("server did not witness a panic");
+                Ok((lock.dump_long_stats(reset),))
+            },
+        );
     });
     cr.insert(DBUS_PATH, &[iface_token], Arc::clone(&server));
 
