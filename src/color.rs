@@ -26,6 +26,8 @@ pub fn fade_between(
     let lam = (duration.as_micros() as f64)
         / (total_duration.as_micros() as f64);
 
+    let lam = lam * lam * lam * lam; // make fade more extreme near the end
+
     let blend_r = (initial_col.0 as f64) * (1.0 - lam) + (final_col.0 as f64) * lam;
     let blend_g = (initial_col.1 as f64) * (1.0 - lam) + (final_col.1 as f64) * lam;
     let blend_b = (initial_col.2 as f64) * (1.0 - lam) + (final_col.2 as f64) * lam;

@@ -100,23 +100,45 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
         );
         b.method(
-            "dumpStats", // name
-            ("reset",), // input args
+            "blockLog", // name
+            (), // input args
             ("log",), // output args
-            move |_: &mut Context, server: &mut Arc<Mutex<server::Server>>, (reset,): (bool,)| {
+            move |_: &mut Context, server: &mut Arc<Mutex<server::Server>>, _: ()| {
                 let mut lock = server.lock()
                     .expect("server did not witness a panic");
-                Ok((lock.dump_stats(reset),))
+                Ok((lock.block_log(),))
             },
         );
         b.method(
-            "dumpLongStats", // name
-            ("reset",), // input args
-            ("log",), // output args
-            move |_: &mut Context, server: &mut Arc<Mutex<server::Server>>, (reset,): (bool,)| {
+            "taskLogAdd", // name
+            ("name",), // input args
+            (), // output args
+            move |_: &mut Context, server: &mut Arc<Mutex<server::Server>>, (name,): (String,)| {
                 let mut lock = server.lock()
                     .expect("server did not witness a panic");
-                Ok((lock.dump_long_stats(reset),))
+                lock.task_log_add(name);
+                Ok(())
+            },
+        );
+        b.method(
+            "taskLogRemove", // name
+            ("name",), // input args
+            (), // output args
+            move |_: &mut Context, server: &mut Arc<Mutex<server::Server>>, (name,): (String,)| {
+                let mut lock = server.lock()
+                    .expect("server did not witness a panic");
+                lock.task_log_remove(&name);
+                Ok(())
+            },
+        );
+        b.method(
+            "taskLogOutput", // name
+            ("name",), // input args
+            ("log",), // output args
+            move |_: &mut Context, server: &mut Arc<Mutex<server::Server>>, (name,): (String,)| {
+                let mut lock = server.lock()
+                    .expect("server did not witness a panic");
+                Ok((lock.task_log_dump(&name),))
             },
         );
     });

@@ -17,6 +17,9 @@
 //! The data managed by the actual timer
 //!
 
+use crate::task::Task;
+use std::collections::HashMap;
+
 /// Main server structure
 pub struct Server {
     /// The current state
@@ -27,12 +30,10 @@ pub struct Server {
     flash_warn: usize,
     /// Last active-window-log update
     last_task_report: std::time::Instant,
-    /// Log of active windows
-    task_log: crate::task::Task,
     /// Log of block start/stop/etc
     block_log: String,
     /// Log of active windows (which must be manually reset)
-    long_task_log: crate::task::Task,
+    task_logs: HashMap<String, Task>,
 }
 
 impl Server {
@@ -43,8 +44,7 @@ impl Server {
             flash_error: 0,
             flash_warn: 0,
             last_task_report: std::time::Instant::now(),
-            task_log: crate::task::Task::new_root(),
-            long_task_log: crate::task::Task::new_root(),
+            task_logs: HashMap::new(),
             block_log: String::new(),
         }
     }
@@ -61,35 +61,45 @@ impl Server {
     }
 
     /// Record the current active window, for task-tracking purposes
+    ///
+    /// Adds the duration that this window has been active (current time
+    /// minus the last time this function was called) to every log.
     pub fn record_current_window(&mut self, win: &str) {
         if let State::InBlock { .. } = self.state {
-            let duration = std::time::Instant::now() - self.last_task_report;
-            self.last_task_report = std::time::Instant::now();
-            self.task_log.add_time(win, duration);
-            self.long_task_log.add_time(win, duration);
+            let now = std::time::Instant::now();
+            let duration = now - self.last_task_report;
+            self.last_task_report = now;
+            for log in self.task_logs.values_mut() {
+               log.add_time(win, duration);
+            }
         }
     }
 
-    /// Output statistics from "short" log
-    pub fn dump_stats(&mut self, reset: bool) -> String {
-        if reset {
-            self.log("reset statistics");
-            self.task_log = crate::task::Task::new_root();
-        } else {
-            self.log("output statistics (did not reset)");
-        }
-        format!("{}{}", self.block_log, self.task_log.to_string())
+    /// Output the most recent block log
+    pub fn block_log(&mut self) -> String {
+        self.block_log.clone()
     }
 
-    /// Output statistics from "long" log
-    pub fn dump_long_stats(&mut self, reset: bool) -> String {
-        if reset {
-            self.log("reset long statistics");
-            self.task_log = crate::task::Task::new_root();
+    /// Create a new task log. This will overwrite any existing log with this name!
+    pub fn task_log_add(&mut self, name: String) {
+        self.log(&format!("added/cleared task log {}", name));
+        self.task_logs.insert(name, Task::new_root());
+    }
+
+    /// Deletes a task log
+    pub fn task_log_remove(&mut self, name: &str) {
+        self.log(&format!("cleared task log {}", name));
+        self.task_logs.remove(name);
+    }
+
+    /// Dumps a task log
+    pub fn task_log_dump(&mut self, name: &str) -> String {
+        self.log(&format!("output task log {}", name));
+        if let Some(log) = self.task_logs.get(name) {
+            log.to_string()
         } else {
-            self.log("output long statistics (did not reset)");
+            format!("[log {} not found]", name)
         }
-        format!("{}{}", self.block_log, self.task_log.to_string())
     }
 
     /// (Attempt to) start a new block 
@@ -99,7 +109,6 @@ impl Server {
         match self.state {
             State::Idle => {
                 let duration = std::time::Duration::from_secs(duration_s);
-                self.task_log = crate::task::Task::new_root();
                 self.state = State::InBlock {
                     duration,
                     end_time: std::time::Instant::now() + duration,
