@@ -21,6 +21,11 @@ use crate::task::Task;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+fn default_color_block_start() -> (u8, u8, u8) { (0, 255, 0) }
+fn default_color_block_end() -> (u8, u8, u8) { (255, 192, 0) }
+fn default_color_cooldown_start() -> (u8, u8, u8) { (255, 0, 0) }
+fn default_color_cooldown_end() -> (u8, u8, u8) { (192, 44, 44) }
+
 /// Main server structure
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Server {
@@ -40,6 +45,15 @@ pub struct Server {
     block_log: String,
     /// Log of active windows (which must be manually reset)
     task_logs: HashMap<String, Task>,
+    /// Initial color of text when blocks start
+    #[serde(default = "default_color_block_start")]
+    color_block_start: (u8, u8, u8),
+    #[serde(default = "default_color_block_end")]
+    color_block_end: (u8, u8, u8),
+    #[serde(default = "default_color_cooldown_start")]
+    color_cooldown_start: (u8, u8, u8),
+    #[serde(default = "default_color_cooldown_end")]
+    color_cooldown_end: (u8, u8, u8),
 }
 
 impl Server {
@@ -52,6 +66,10 @@ impl Server {
             last_task_report: std::time::Instant::now(),
             task_logs: HashMap::new(),
             block_log: String::new(),
+            color_block_start: default_color_block_start(),
+            color_block_end: default_color_block_end(),
+            color_cooldown_start: default_color_cooldown_start(),
+            color_cooldown_end: default_color_cooldown_end(),
         }
     }
 
@@ -211,7 +229,12 @@ impl Server {
                 }
                 format!(
                     "<fc={}{}>{:02}:{:02}</fc>",
-                    crate::color::fade_between((255, 192, 0), (0, 255, 0), rem_duration, duration),
+                    crate::color::fade_between(
+                        self.color_block_end,
+                        self.color_block_start,
+                        rem_duration,
+                        duration
+                    ),
                     bg_col,
                     rem_s / 60,
                     rem_s % 60,
@@ -237,8 +260,8 @@ impl Server {
                 format!(
                     "<fc={}{}>{:02}:{:02}</fc>",
                     crate::color::fade_between(
-                        (192, 44, 44),
-                        (255, 0, 0),
+                        self.color_cooldown_end,
+                        self.color_cooldown_start,
                         rem_duration,
                         crate::COOLDOWN_DURATION
                     ),

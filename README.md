@@ -19,7 +19,8 @@ commands to talk to it) but has a slightly different feature set:
   I don't have any real intention of making more general.
 * Right now we hardcode "keyboard.sh" rather than having a `--terminatedShellCmd` option.
   This makes the tool basically unusable except for me, it's a FIXME to fix this.
-* The colors fade (also hardcoded, FIXME should be configurable)
+* The colors fade -- to change these, run with filename passed on the command-line, so
+  it will dump its config, then edit the resulting file.
 
 # Setting up
 
