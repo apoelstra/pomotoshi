@@ -20,10 +20,12 @@
 //!
 
 mod server;
+mod task;
 
 use dbus::blocking::LocalConnection;
 use dbus::channel::MatchingReceiver;
 use dbus_crossroads::{Crossroads, Context};
+use std::process::Command;
 use std::sync::{Arc, Mutex};
 
 /// How long cooldown (period after a block when no new blocks are allowed) should last
@@ -96,6 +98,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Ok(())
             },
         );
+        b.method(
+            "dumpStats", // name
+            ("reset",), // input args
+            ("log",), // output args
+            move |_: &mut Context, server: &mut Arc<Mutex<server::Server>>, (reset,): (bool,)| {
+                let mut lock = server.lock()
+                    .expect("server did not witness a panic");
+                Ok((lock.dump_stats(reset),))
+            },
+        );
     });
     cr.insert(DBUS_PATH, &[iface_token], Arc::clone(&server));
 
@@ -108,10 +120,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Serve clients forever.
     loop {
+        // D-Bus updates
         c.process(UPDATE_FREQ)?;
 
         let mut lock = server.lock()
             .expect("server did not witness a panic");
+
+        // Record currently-active window
+        let curr_win = Command::new("xdotool")
+            .arg("getwindowfocus")
+            .arg("getwindowname")
+            .output()
+            .expect("executing xdotool")
+            .stdout;
+        lock.record_current_window(String::from_utf8_lossy(&curr_win).as_ref());
+
+        // Output state to xmobar
         println!("{}", lock.xmobar_update());
     }
 }

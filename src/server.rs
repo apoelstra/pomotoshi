@@ -25,6 +25,10 @@ pub struct Server {
     flash_error: usize,
     /// Warning flash countdown
     flash_warn: usize,
+    /// Last active-window-log update
+    last_task_report: std::time::Instant,
+    /// Log of active windows
+    task_log: crate::task::Task,
 }
 
 impl Server {
@@ -34,13 +38,33 @@ impl Server {
             state: State::Idle,
             flash_error: 0,
             flash_warn: 0,
+            last_task_report: std::time::Instant::now(),
+            task_log: crate::task::Task::new_root(),
         }
+    }
+
+    /// Record the current active window, for task-tracking purposes
+    pub fn record_current_window(&mut self, win: &str) {
+        if let State::InBlock { .. } = self.state {
+            let duration = std::time::Instant::now() - self.last_task_report;
+            self.last_task_report = std::time::Instant::now();
+            self.task_log.add_time(win, duration);
+        }
+    }
+
+    /// Record the current active window, for task-tracking purposes
+    pub fn dump_stats(&mut self, reset: bool) -> String {
+        if reset {
+            self.task_log = crate::task::Task::new_root();
+        }
+        self.task_log.to_string()
     }
 
     /// (Attempt to) start a new block 
     pub fn start_block(&mut self, duration_s: u64) {
         match self.state {
             State::Idle => {
+                self.task_log = crate::task::Task::new_root();
                 self.state = State::InBlock {
                     end_time: std::time::Instant::now() + std::time::Duration::from_secs(duration_s),
                 };
