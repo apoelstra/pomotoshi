@@ -18,17 +18,21 @@
 //!
 
 use crate::task::Task;
+use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 
 /// Main server structure
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Server {
     /// The current state
+    #[serde(skip, default = "State::idle")]
     state: State,
     /// Error flash countdown
     flash_error: usize,
     /// Warning flash countdown
     flash_warn: usize,
     /// Last active-window-log update
+    #[serde(skip, default = "std::time::Instant::now")]
     last_task_report: std::time::Instant,
     /// Log of block start/stop/etc
     block_log: String,
@@ -229,7 +233,7 @@ impl Server {
 }
 
 /// The state machine
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 enum State {
     /// The server is idle (no current block)
     Idle,
@@ -247,5 +251,10 @@ enum State {
     InCooldown {
         end_time: std::time::Instant,
     },
+}
+
+impl State {
+    /// Helper function needed by serde to "deserialize" the field as Idle
+    fn idle() -> State { State::Idle }
 }
 

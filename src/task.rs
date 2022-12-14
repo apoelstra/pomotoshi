@@ -19,12 +19,13 @@
 //!
 
 use regex::Regex;
+use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 use std::iter;
 use std::time::Duration;
 
 /// Node in the tree of "units of work"
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone, Serialize, Deserialize)]
 pub struct Task {
     focus_time: Duration,
     children: HashMap<String, Task>,
