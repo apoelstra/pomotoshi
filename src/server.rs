@@ -94,14 +94,16 @@ impl Server {
     /// Adds the duration that this window has been active (current time
     /// minus the last time this function was called) to every log.
     pub fn record_current_window(&mut self, win: &str) {
+        let now = std::time::Instant::now();
+        // Only record things if we are currently in a block...
         if let State::InBlock { .. } = self.state {
-            let now = std::time::Instant::now();
             let duration = now - self.last_task_report;
-            self.last_task_report = now;
             for log in self.task_logs.values_mut() {
                 log.add_time(win, duration);
             }
         }
+        // ..but update last task report time regardless
+        self.last_task_report = now;
     }
 
     /// Output the most recent block log
@@ -251,6 +253,10 @@ impl Server {
                         .expect("executing bash");
                     self.state = State::Idle;
                 };
+                if bg_col == "" {
+                    // by default, highlight cooldown visibly
+                    bg_col = ",#FF8";
+                }
 
                 let rem_duration = end_time - now;
                 let rem_s = rem_duration.as_secs();
